@@ -1,0 +1,57 @@
+ CrearUsuario() {
+
+     let Usuario = JSON.stringify({
+         Nombre: $("#inputName").val(),
+         Cedula: $("#inputCedula").val()
+     });
+
+     $.ajax({
+         type: "POST",
+         url: "Usuarios/RegistroUsuario",
+         dataType: "json",
+         data: Usuario,
+         success: function (response) {
+             alert(response.mensaje); 
+         },
+         error: function (error) {
+             console.error("Error al insertar:", error);
+         }
+     });
+ }
+
+
+ ListarUsuarios() {
+     $.ajax({
+         url: "Usuarios/ConsultarUsuarios",
+         type: "GET",
+         dataType: "json",
+         success: function (data) {
+             let tabla = $("#tableUsuarios");
+             tabla.empty(); // Limpiar la tabla antes de agregar datos
+
+             data.data.forEach(producto => {
+                 let fila = `<tr>
+                 <td>${producto.Nombre}</td>
+                 <td>${producto.Cedula}</td>
+             </tr>`;
+                 tabla.append(fila);
+             });
+         },
+         error: function (error) {
+             console.error("Error al obtener productos:", error);
+         }
+     });
+
+     $.ajax({
+         type: "GET",
+         url: "",
+         dataType: "json",
+         data: {},
+         success: function (response) {
+             alert(response.mensaje);
+         },
+         error: function (error) {
+             console.error("Error al insertar:", error);
+         }
+     });
+ }
