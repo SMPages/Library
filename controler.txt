@@ -1,0 +1,20 @@
+  public async Task<JsonResult> ConsultarUsuarios()
+  {
+      try
+      {
+          List<Usuario> usuarios = new List<Usuario>
+          {
+              new Usuario{ Cedula= "asas", Nombre = "asasas"},
+              new Usuario{ Cedula= "asas", Nombre = "asasas"},
+              new Usuario{ Cedula= "asas", Nombre = "asasas"},
+              new Usuario{ Cedula= "asas", Nombre = "asasas"}
+          };
+
+          return Json(new { sucess = true, mensaje = "Error al registrar el usuario", data = usuarios }, JsonRequestBehavior.AllowGet);
+      }
+      catch (System.Exception)
+      {
+
+          throw;
+      }
+  }
