@@ -18,3 +18,123 @@
           throw;
       }
   }
+
+public async Task<MdEnfoqueDiferencial> F_GetDataEnfoqueDif(string idDocumento, string numeroDocumento)
+{
+    MdEnfoqueDiferencial resultadoConsulta = new MdEnfoqueDiferencial();
+    ConDBOracle cnOracle = new ConDBOracle("strConexion");
+    OracleCommand objCommand = new OracleCommand();
+    DataTable resultado = new DataTable();
+
+    try
+    {
+        objCommand.Parameters.Clear();
+        objCommand.Parameters.Add("V_CURSOR", OracleDbType.RefCursor).Direction = ParameterDirection.ReturnValue;
+        objCommand.Parameters.Add("P_PAC_TIPO_IDENT", OracleDbType.Varchar2, ParameterDirection.Input).Value = idDocumento;
+        objCommand.Parameters.Add("P_PAC_PAC_RUT", OracleDbType.Varchar2, ParameterDirection.Input).Value = numeroDocumento;
+        objCommand.Connection = cnOracle.Conexion;
+        objCommand.CommandType = CommandType.StoredProcedure;
+        objCommand.CommandText = "ADMSALUD.PKG_ONCOLOGIA.FN_GET_ONC_ENFOQUEDIF";
+
+        if (cnOracle.Conectar())
+        {
+            resultado.Load(await objCommand.ExecuteReaderAsync());
+            cnOracle.Desconectar();
+            objCommand.Connection.Close();
+            objCommand.Dispose();
+        }
+        // Procesar los resultados si hay filas 
+        if (resultado.Rows.Count > 0)
+        {
+            foreach (DataRow fila in resultado.Rows)
+            {
+                resultadoConsulta.ONC_ENFOQUEDIF_ID = fila.Table.Columns.Contains("ONC_ENFOQUEDIF_ID") && fila["ONC_ENFOQUEDIF_ID"] != DBNull.Value
+                                    ? fila["ONC_ENFOQUEDIF_ID"].ToString() : string.Empty;
+                resultadoConsulta.ONC_ETNIA = fila.Table.Columns.Contains("ONC_ETNIA") && fila["ONC_ETNIA"] != DBNull.Value
+                                        ? fila["ONC_ETNIA"].ToString() : string.Empty;
+                resultadoConsulta.PAC_PAC_SEXO = fila.Table.Columns.Contains("PAC_PAC_SEXO") && fila["PAC_PAC_SEXO"] != DBNull.Value
+                                        ? fila["PAC_PAC_SEXO"].ToString() : string.Empty;
+                resultadoConsulta.ONC_IDENTIDADGEN = fila.Table.Columns.Contains("ONC_IDENTIDADGEN") && fila["ONC_IDENTIDADGEN"] != DBNull.Value
+                                        ? fila["ONC_IDENTIDADGEN"].ToString() : string.Empty;
+                resultadoConsulta.ONC_ORIENTACIONSEX = fila.Table.Columns.Contains("ONC_ORIENTACIONSEX") && fila["ONC_ORIENTACIONSEX"] != DBNull.Value
+                                        ? fila["ONC_ORIENTACIONSEX"].ToString() : string.Empty;
+
+                resultadoConsulta.ONC_DISCAPACIDAD = fila.Table.Columns.Contains("ONC_DISCAPACIDAD") && fila["ONC_DISCAPACIDAD"] != DBNull.Value
+                                        ? fila["ONC_DISCAPACIDAD"].ToString() : string.Empty;
+                resultadoConsulta.ONC_TIPODISCAPACIDAD = fila.Table.Columns.Contains("ONC_TIPODISCAPACIDAD") && fila["ONC_TIPODISCAPACIDAD"] != DBNull.Value
+                                        ? fila["ONC_TIPODISCAPACIDAD"].ToString() : string.Empty;
+                resultadoConsulta.ONC_VICTIMACONFARM = fila.Table.Columns.Contains("ONC_VICTIMACONFARM") && fila["ONC_VICTIMACONFARM"] != DBNull.Value
+                                        ? fila["ONC_VICTIMACONFARM"].ToString() : string.Empty;
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        cnOracle.Desconectar();
+        objCommand.Connection.Close();
+        objCommand = null;
+    }
+    finally
+    {
+        cnOracle.Desconectar();
+        cnOracle.Dispose();
+        resultado.Dispose();
+        objCommand = null;
+        if (objCommand != null) { objCommand.Dispose(); }
+    }
+    return resultadoConsulta;
+
+}
+
+
+/// <summary>
+/// Procedimiento para guardar datos en ONC_TTO_APLIC_QUIM y devolver el ID generado
+/// </summary>
+public int F_GuardarAplicacionQuimica(int V_QuimCurativoId, string V_NumCiclo, DateTime V_FechaAplic, DateTime? V_FechaAproxAplic, string V_Complicaciones)
+{
+    int result = 0;
+    ConDBOracle cnOracle = new ConDBOracle("strConexion");
+    OracleCommand objCommand = new OracleCommand();
+
+    try
+    {
+        objCommand.Parameters.Clear();
+
+        // Asignar los parámetros al procedimiento
+        objCommand.Parameters.Add("P_ONC_TTO_QUIM_CURATIVO_ID", OracleDbType.Int32, ParameterDirection.Input).Value = V_QuimCurativoId;
+        objCommand.Parameters.Add("P_ONC_NUM_CICLO", OracleDbType.Varchar2, ParameterDirection.Input).Value = V_NumCiclo;
+        objCommand.Parameters.Add("P_ONC_FECHA_APLIC", OracleDbType.Date, ParameterDirection.Input).Value = V_FechaAplic;
+        objCommand.Parameters.Add("P_ONC_FECHA_APROX_APLIC", OracleDbType.Date, ParameterDirection.Input).Value = V_FechaAproxAplic.HasValue ? (object)V_FechaAproxAplic.Value : DBNull.Value;
+        objCommand.Parameters.Add("P_ONC_COMPLICACIONES", OracleDbType.Varchar2, ParameterDirection.Input).Value = V_Complicaciones ?? (object)DBNull.Value;
+        objCommand.Parameters.Add("O_ONC_TTO_APLIC_QUIM_ID", OracleDbType.Int32, ParameterDirection.Output);
+
+        // Configurar la conexión y el procedimiento almacenado
+        objCommand.Connection = cnOracle.Conexion;
+        objCommand.CommandType = CommandType.StoredProcedure;
+        objCommand.CommandText = "PKG_ONCOLOGIA.PRC_INSERT_ONC_TTO_APLIC_QUIM";
+
+        if (cnOracle.Conectar())
+        {
+            // Ejecutar el procedimiento almacenado
+            objCommand.ExecuteNonQuery();
+            // Obtener el ID generado a través del parámetro de salida
+            result = Convert.ToInt32(objCommand.Parameters["O_ONC_TTO_APLIC_QUIM_ID"].Value.ToString());
+        }
+    }
+    catch (Exception ex)
+    {
+        cnOracle.Desconectar();
+        objCommand.Connection.Close();
+        objCommand = null;
+        throw new Exception("Error al insertar en ONC_TTO_APLIC_QUIM", ex);
+    }
+    finally
+    {
+        cnOracle.Desconectar();
+        cnOracle.Dispose();
+        objCommand = null;
+        if (objCommand != null) { objCommand.Dispose(); }
+    }
+
+    return result;
+}
