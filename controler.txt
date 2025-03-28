@@ -138,3 +138,18 @@ public int F_GuardarAplicacionQuimica(int V_QuimCurativoId, string V_NumCiclo, D
 
     return result;
 }
+
+
+<div class="col-md-2 MargFloatBoos">
+    <div class="form-group has-float-label">
+        @Html.DropDownList("tipoIdent", null, String.Format("Seleccione una opcion"), htmlAttributes: new { @tabindex = 1, @id = "tipoIdent", @class = "form-control select2", style = "width: 100%;" })
+        <label class="Labels">Identificacion</label>
+    </div>
+</div>
+
+ public async Task<ActionResult> Index()
+ {
+     ViewBag.tipoIdent = new SelectList(await new DbOncologia().F_tipoDocumento(), "Codigo", "Descripcion", "1   ");
+     return View();
+ }
+
