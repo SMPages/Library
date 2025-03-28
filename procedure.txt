@@ -1,18 +1,65 @@
 create or replace PACKAGE PKS_ADMINISTRACION AS 
-
+    TYPE SYS_REFCURSOR IS REF CURSOR;
+    FUNCTION FN_GET_ONC_ENFOQUEDIF (P_PAC_TIPO_IDENT IN VARCHAR2,P_PAC_PAC_RUT IN NUMBER) RETURN SYS_REFCURSOR;
     PROCEDURE Ins_ErrorSystem(
         p_procedimiento       IN VARCHAR2,
         p_descripcion         IN VARCHAR2,
         p_identificacion_user IN VARCHAR2,
         p_id_documento        IN NUMBER
     );
+    PROCEDURE PRC_INS_ONC_MORTALIDAD (
+    P_PAC_TIPO_IDENT         IN  ADMSALUD.PAC_PACIENTE.PAC_PAC_TIPOIDENTCODIGO%TYPE,
+    P_PAC_PAC_RUT            IN ADMSALUD.PAC_PACIENTE.PAC_PAC_RUT%TYPE,
+    P_ONC_FECHA_MORTALIDAD IN DATE,
+    P_ONC_ID_CAUSA_MORTALIDAD IN NUMBER,
+    P_ONC_DESCRIPCION_CAUSA_MUERTE IN CLOB,
+    P_MENSAJE_OUT OUT VARCHAR2);
 
 END PKS_ADMINISTRACION;
 
 
 create or replace PACKAGE BODY PKS_ADMINISTRACION AS 
 
-
+    --FUNCION TRAE DATOS DE ENFOQUE DIFERENCIAL
+    FUNCTION FN_GET_ONC_ENFOQUEDIF (
+        P_PAC_TIPO_IDENT IN VARCHAR2,
+        P_PAC_PAC_RUT IN NUMBER
+    ) RETURN SYS_REFCURSOR IS
+        V_CURSOR SYS_REFCURSOR;
+    BEGIN
+        OPEN V_CURSOR FOR
+        SELECT ONC_ENFOQUEDIF_ID,
+               ONC_PAC_NUMERO,
+               ONC_ETNIA,
+               PAC_PAC_SEXO,
+               ONC_IDENTIDADGEN,
+               ONC_ORIENTACIONSEX,
+               ONC_DISCAPACIDAD,
+               ONC_TIPODISCAPACIDAD,
+               ONC_VICTIMACONFARM
+          FROM ADMSALUD.TAB_ONC_ENFOQUEDIF, 
+               ADMSALUD.PAC_PACIENTE
+         WHERE PAC_PAC_TIPOIDENTCODIGO = P_PAC_TIPO_IDENT
+         AND TRIM(PAC_PAC_RUT) = P_PAC_PAC_RUT;
+    
+        RETURN V_CURSOR;
+    
+        EXCEPTION
+            WHEN OTHERS
+            THEN
+            ADMSALUD.PKS_ADMINISTRACION.Ins_ErrorSystem (
+                p_procedimiento         =>
+                    'PKG_ONCOLOGIA.FN_GET_ONC_ENFOQUEDIF',
+                p_descripcion           =>
+                       'Se ha producido el error en la consulta : '
+                    || SQLCODE
+                    || SQLERRM,
+                p_identificacion_user   => '0',
+                p_id_documento          => 0);
+            ROLLBACK;
+    
+    END FN_GET_ONC_ENFOQUEDIF;
+ 
  PROCEDURE Ins_ErrorSystem(
         p_procedimiento       IN VARCHAR2,
         p_descripcion         IN VARCHAR2,
@@ -42,4 +89,60 @@ create or replace PACKAGE BODY PKS_ADMINISTRACION AS
             -- Opcional: Manejo de errores secundarios
             RAISE;
     END Ins_ErrorSystem;
+
+PROCEDURE PRC_INS_ONC_MORTALIDAD (
+    P_PAC_TIPO_IDENT         IN  ADMSALUD.PAC_PACIENTE.PAC_PAC_TIPOIDENTCODIGO%TYPE,
+    P_PAC_PAC_RUT            IN ADMSALUD.PAC_PACIENTE.PAC_PAC_RUT%TYPE,
+    P_ONC_FECHA_MORTALIDAD IN DATE,
+    P_ONC_ID_CAUSA_MORTALIDAD IN NUMBER,
+    P_ONC_DESCRIPCION_CAUSA_MUERTE IN CLOB,
+    P_MENSAJE_OUT OUT VARCHAR2)
+IS
+ v_onc_pac_numero NUMBER;
+
+BEGIN
+    P_MENSAJE_OUT := '';
+
+     -- Llamar a la función F_ObtenerOncPacNumero dentro del procedimiento
+        v_onc_pac_numero := F_ObtenerOncPacNumero(P_PAC_PAC_RUT, P_PAC_TIPO_IDENT);
+
+        IF v_onc_pac_numero IS NULL THEN
+            P_MENSAJE_OUT := 'NO SE ENCONTRO ONC_PAC NUMERO';
+        END IF;
+
+    -- Intentar actualizar el registro si ya existe
+   UPDATE ADMSALUD.PAC_PACIENTE
+   SET "PAC_PAC_FECHAFALLEC" = P_ONC_FECHA_MORTALIDAD
+   WHERE TRIM(PAC_PAC_NUMERO) = TRIM(v_onc_pac_numero);
+
+    -- Verificar si la actualización afectó filas (si no existe, insertar)
+    IF SQL%ROWCOUNT = 0 THEN
+        INSERT INTO "ADMSALUD"."ONC_DESENLACE_MORTALIDAD" (
+            "PAC_PAC_NUMERO",
+            "ONC_FECHA_MORTALIDAD",
+            "ONC_ID_CAUSA_MORTALIDAD",
+            "ONC_DESCRIPCION_CAUSA_MUERTE"
+        ) VALUES (
+            v_onc_pac_numero,
+            P_ONC_FECHA_MORTALIDAD,
+            P_ONC_ID_CAUSA_MORTALIDAD,
+            P_ONC_DESCRIPCION_CAUSA_MUERTE
+        );
+
+    END IF;
+
+    P_MENSAJE_OUT := 'OK';
+
+EXCEPTION
+    WHEN OTHERS THEN
+        ADMSALUD.PKS_ADMINISTRACION.Ins_ErrorSystem (
+            p_procedimiento       => 'PKG_ONCOLOGIA.PRC_INS_ONC_GEOREF',
+            p_descripcion         => 'Se ha producido el error en la consulta : '
+                                     || SQLCODE || SQLERRM || DBMS_UTILITY.FORMAT_ERROR_STACK,
+            p_identificacion_user => '0',
+            p_id_documento        => 0
+        );
+        ROLLBACK;
+END PRC_INS_ONC_MORTALIDAD;
+
 END PKS_ADMINISTRACION;
