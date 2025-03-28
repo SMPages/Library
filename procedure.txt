@@ -1,0 +1,45 @@
+create or replace PACKAGE PKS_ADMINISTRACION AS 
+
+    PROCEDURE Ins_ErrorSystem(
+        p_procedimiento       IN VARCHAR2,
+        p_descripcion         IN VARCHAR2,
+        p_identificacion_user IN VARCHAR2,
+        p_id_documento        IN NUMBER
+    );
+
+END PKS_ADMINISTRACION;
+
+
+create or replace PACKAGE BODY PKS_ADMINISTRACION AS 
+
+
+ PROCEDURE Ins_ErrorSystem(
+        p_procedimiento       IN VARCHAR2,
+        p_descripcion         IN VARCHAR2,
+        p_identificacion_user IN VARCHAR2,
+        p_id_documento        IN NUMBER
+    ) IS
+    BEGIN
+        -- Inserta los datos del error en una tabla de auditoría o log de errores
+        INSERT INTO ADMSALUD.LOG_ERROR_SYSTEM (
+            FECHA,
+            PROCEDIMIENTO,
+            DESCRIPCION,
+            IDENTIFICACION_USER,
+            ID_DOCUMENTO
+        ) VALUES (
+            SYSDATE,
+            p_procedimiento,
+            p_descripcion,
+            p_identificacion_user,
+            p_id_documento
+        );
+
+        -- Commit para guardar los datos en la tabla
+        COMMIT;
+    EXCEPTION
+        WHEN OTHERS THEN
+            -- Opcional: Manejo de errores secundarios
+            RAISE;
+    END Ins_ErrorSystem;
+END PKS_ADMINISTRACION;
